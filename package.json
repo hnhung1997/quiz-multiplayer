@@ -1,0 +1,14 @@
+{
+  "name": "power-rangers-quiz-multiplayer",
+  "version": "1.0.0",
+  "description": "Multiplayer real-time quiz server (PIN-based) for the Power Rangers quiz game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}

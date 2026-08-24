@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tham Gia - Quiz Siêu Nhân</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root {
+    --purple-light:#9a6bff; --green-light:#3fc05f; --blue-dark:#2f9eff;
+    --orange-start:#ffd24a; --orange-end:#ff8c5a; --accent-red:#e03434;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; font-family:'Roboto',sans-serif; color:#fff;
+    background: linear-gradient(135deg, #a73cff, #ff6fcf, #4d90ff);
+    display:flex; justify-content:center; align-items:flex-start; padding: 20px 12px;
+  }
+  .wrap { max-width: 480px; width:100%; }
+  .card {
+    background: rgba(15,23,36,0.92); border-radius:18px; padding:24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  h1 { font-family:'Fredoka',sans-serif; text-align:center; color:var(--orange-start); margin-top:0; font-size:1.6em; }
+  input[type=text] {
+    width:100%; padding:14px; border-radius:10px; border:1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06); color:#fff; font-size:1.1em; margin-bottom:12px;
+    text-align:center; letter-spacing: 2px;
+  }
+  .btn {
+    width:100%; padding:15px; border-radius:12px; border:0; cursor:pointer; font-weight:700;
+    font-size:1.1em; color:#08131f; background: linear-gradient(90deg, var(--orange-start), var(--orange-end));
+  }
+  .btn:disabled { opacity:0.5; }
+  #joinErr { color:#ff8080; text-align:center; min-height:1.2em; margin-top:6px; }
+
+  .step { display:none; }
+  .step.active { display:block; }
+
+  .waiting-anim { text-align:center; font-size:3em; margin: 20px 0; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.15);} }
+  .players-mini { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:14px; }
+  .chip-mini { background: rgba(255,255,255,0.08); padding:6px 12px; border-radius:999px; font-size:0.9em; }
+
+  .timer-bar-wrap { height:8px; border-radius:6px; background:rgba(255,255,255,0.15); overflow:hidden; margin-bottom:14px; }
+  .timer-bar { height:100%; background: linear-gradient(90deg, var(--green-light), var(--orange-start)); width:100%; transition: width 1s linear; }
+  .qtext { background: var(--blue-dark); padding:16px; border-radius:12px; font-weight:700; text-align:center; margin-bottom:16px; font-size:1.1em; }
+  .answers { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .ans-btn {
+    padding:18px 8px; border-radius:12px; font-weight:700; font-size:1.05em; color:#1a1a1a;
+    border:3px solid transparent; cursor:pointer; min-height:70px;
+  }
+  .ans-btn.selected { border-color:#fff; }
+  .ans-btn:disabled { opacity:0.6; cursor:not-allowed; }
+  .waiting-text { text-align:center; opacity:0.85; margin-top:16px; }
+
+  .result-badge { text-align:center; font-size:1.6em; font-weight:800; margin: 10px 0; }
+  .result-badge.correct { color:#2ecc71; }
+  .result-badge.wrong { color:#ff6b6b; }
+  .score-line { text-align:center; font-size:1.1em; margin-bottom:16px; }
+  .rank-line { text-align:center; opacity:0.85; margin-bottom: 16px; }
+
+  .final-medal { text-align:center; font-size:3em; margin: 10px 0; }
+  .final-score { text-align:center; font-size:1.3em; font-weight:700; color: var(--orange-start); margin-bottom:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+
+    <div id="stepJoin" class="step active">
+      <h1>🦸 Tham Gia Trận Đấu</h1>
+      <input type="text" id="pinInput" placeholder="Nhập mã PIN 6 số" inputmode="numeric" maxlength="6">
+      <input type="text" id="nameInput" placeholder="Nhập tên hiển thị của bạn" maxlength="24">
+      <button class="btn" id="btnJoin">Tham Gia Ngay 🚀</button>
+      <div id="joinErr"></div>
+    </div>
+
+    <div id="stepWaiting" class="step">
+      <div class="waiting-anim">⏳</div>
+      <h1 id="waitingTitle">Đang chờ host bắt đầu...</h1>
+      <p style="text-align:center;opacity:0.8;">Xin chào, <strong id="myNameDisplay"></strong>!</p>
+      <div class="players-mini" id="playersMini"></div>
+    </div>
+
+    <div id="stepQuestion" class="step">
+      <div class="timer-bar-wrap"><div class="timer-bar" id="timerBar"></div></div>
+      <div class="qtext" id="qText">...</div>
+      <div class="answers" id="answersGrid"></div>
+      <div class="waiting-text" id="waitingAfterAnswer" style="display:none;">✅ Đã nộp đáp án! Chờ kết quả...</div>
+    </div>
+
+    <div id="stepResult" class="step">
+      <div class="result-badge" id="resultBadge"></div>
+      <div class="score-line" id="scoreLine"></div>
+      <div class="rank-line" id="rankLine"></div>
+      <div id="explanationBox" style="background:rgba(255,255,255,0.08);padding:12px 14px;border-radius:10px;margin-bottom:10px;display:none;"></div>
+      <p style="text-align:center;opacity:0.7;">Chờ host chuyển câu tiếp theo...</p>
+    </div>
+
+    <div id="stepFinal" class="step">
+      <div class="final-medal" id="finalMedal">🏁</div>
+      <h1 id="finalTitle">Kết thúc!</h1>
+      <div class="final-score" id="finalScore"></div>
+      <div id="finalTop3"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const socket = io();
+const el = (id) => document.getElementById(id);
+const steps = ['stepJoin','stepWaiting','stepQuestion','stepResult','stepFinal'];
+function showStep(id) { steps.forEach(s => el(s).classList.toggle('active', s === id)); }
+
+const DEFAULT_COLORS = ['#e03434', '#ff6fcf', '#2f9eff', '#3fc05f', '#ffd24a', '#9b6bff'];
+function colorFromLegacy(value, index = 0) {
+  if (typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)) return value;
+  return DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+}
+function getContrastTextColor(hex) {
+  const clean = String(hex||'#ffffff').replace('#','');
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return '#222';
+  const r=parseInt(clean.slice(0,2),16), g=parseInt(clean.slice(2,4),16), b=parseInt(clean.slice(4,6),16);
+  return ((0.299*r+0.587*g+0.114*b)/255) > 0.62 ? '#222' : '#fff';
+}
+function escapeHtml(text) { const d=document.createElement('div'); d.textContent=text??''; return d.innerHTML; }
+
+// prefill PIN from ?pin= in URL, if host shared a direct link
+const urlPin = new URLSearchParams(location.search).get('pin');
+if (urlPin) el('pinInput').value = urlPin;
+
+let myName = '';
+let answered = false;
+
+el('btnJoin').addEventListener('click', join);
+el('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });
+
+function join() {
+  const pin = el('pinInput').value.trim();
+  const name = el('nameInput').value.trim();
+  if (!/^\d{6}$/.test(pin)) { el('joinErr').textContent = 'Mã PIN phải gồm 6 chữ số.'; return; }
+  if (!name) { el('joinErr').textContent = 'Vui lòng nhập tên.'; return; }
+
+  el('btnJoin').disabled = true;
+  socket.emit('join_room', { pin, name }, (res) => {
+    el('btnJoin').disabled = false;
+    if (!res.ok) { el('joinErr').textContent = res.error || 'Không thể tham gia.'; return; }
+    myName = name;
+    el('myNameDisplay').textContent = name;
+    el('joinErr').textContent = '';
+    showStep('stepWaiting');
+  });
+}
+
+socket.on('players_update', (players) => {
+  el('playersMini').innerHTML = players.map(p => `<span class="chip-mini">${escapeHtml(p.name)}</span>`).join('');
+});
+
+socket.on('game_started', () => {
+  el('waitingTitle').textContent = 'Trận đấu đang bắt đầu...';
+});
+
+socket.on('new_question', (data) => {
+  showStep('stepQuestion');
+  answered = false;
+  el('qText').textContent = data.q;
+  el('waitingAfterAnswer').style.display = 'none';
+
+  el('answersGrid').innerHTML = data.opts.map((o, i) => {
+    const c = colorFromLegacy(o.color, i);
+    return `<button class="ans-btn" data-idx="${i}" style="background:${c};color:${getContrastTextColor(c)}">${escapeHtml(o.text)}</button>`;
+  }).join('');
+
+  document.querySelectorAll('.ans-btn').forEach(btn => {
+    btn.addEventListener('click', () => submitAnswer(btn));
+  });
+
+  startTimerBar(data.time_limit);
+});
+
+function submitAnswer(btn) {
+  if (answered) return;
+  answered = true;
+  document.querySelectorAll('.ans-btn').forEach(b => b.disabled = true);
+  btn.classList.add('selected');
+  socket.emit('submit_answer', { idx: Number(btn.dataset.idx) });
+  el('waitingAfterAnswer').style.display = 'block';
+}
+
+function startTimerBar(seconds) {
+  // Thanh đếm ngược chỉ là hiệu ứng hình ảnh (CSS transition).
+  // Server mới là nơi quyết định khi nào hết giờ thật sự, client không tự đếm giờ.
+  const bar = el('timerBar');
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  requestAnimationFrame(() => { bar.style.transition = `width ${seconds}s linear`; bar.style.width = '0%'; });
+}
+
+socket.on('answer_submitted', () => {
+  el('waitingAfterAnswer').textContent = '✅ Đã nộp đáp án! Chờ kết quả...';
+});
+
+socket.on('question_result', (data) => {
+  showStep('stepResult');
+
+  const me = data.results.find(r => r.name === myName);
+  if (me) {
+    el('resultBadge').textContent = me.correct ? '🎉 CHÍNH XÁC!' : '❌ SAI RỒI!';
+    el('resultBadge').className = 'result-badge ' + (me.correct ? 'correct' : 'wrong');
+    el('scoreLine').textContent = me.correct ? `+${me.gained} điểm — Tổng: ${me.score}` : `+0 điểm — Tổng: ${me.score}`;
+  } else {
+    el('resultBadge').textContent = '⏱️ Không kịp trả lời';
+    el('resultBadge').className = 'result-badge wrong';
+    el('scoreLine').textContent = '';
+  }
+
+  if (data.explanation) {
+    el('explanationBox').style.display = 'block';
+    el('explanationBox').textContent = data.explanation;
+  } else {
+    el('explanationBox').style.display = 'none';
+  }
+  el('rankLine').textContent = '';
+});
+
+socket.on('leaderboard_updated', (players) => {
+  const idx = players.findIndex(p => p.name === myName);
+  if (idx >= 0) el('rankLine').textContent = `Hạng hiện tại: #${idx + 1} / ${players.length}`;
+});
+
+socket.on('game_finished', (players) => {
+  showStep('stepFinal');
+  const idx = players.findIndex(p => p.name === myName);
+  const me = players[idx];
+  const medals = ['🥇','🥈','🥉'];
+  el('finalMedal').textContent = idx >= 0 && idx < 3 ? medals[idx] : '🏁';
+  el('finalTitle').textContent = idx >= 0 ? `Bạn xếp hạng #${idx+1} / ${players.length}` : 'Kết thúc trận đấu!';
+  el('finalScore').textContent = me ? `Điểm của bạn: ${me.score}` : '';
+  el('finalTop3').innerHTML = '<h3 style="text-align:center;opacity:0.85;">Top 3</h3>' + players.slice(0,3).map((p,i) =>
+    `<div style="text-align:center;margin:4px 0;">${medals[i]} ${escapeHtml(p.name)} — ${p.score} đ</div>`
+  ).join('');
+});
+
+socket.on('host_left', () => {
+  alert('Host đã rời phòng. Trận đấu kết thúc.');
+  location.reload();
+});
+
+window.addEventListener('beforeunload', () => socket.emit('leave_room'));
+</script>
+</body>
+</html>
