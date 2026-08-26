@@ -3,22 +3,6 @@
 Bản nâng cấp thêm chế độ **chơi nhóm real-time** cho game Quiz Siêu Nhân của bạn,
 dùng **Node.js + Socket.IO** làm server thật (không còn chỉ chạy 1 file HTML).
 
-## Những gì được giữ nguyên
-- `index.html`, `js.html`, `style.css` và toàn bộ hình ảnh — y hệt bản gốc.
-- Chế độ "Chơi Một Mình" (localStorage) vẫn hoạt động như cũ, không đổi gì.
-- Câu hỏi bạn đã tạo trong **Quản Lý Câu Hỏi** (`localStorage: pr_quiz_questions`)
-  được tự động dùng làm ngân hàng câu hỏi khi tạo phòng chơi nhóm.
-
-## Những gì được thêm mới
-- `server.js` — server Node.js/Express/Socket.IO, giữ **toàn bộ trạng thái trận đấu,
-  đáp án đúng và điểm số phía server** (client không thể gian lận điểm hay biết trước đáp án).
-- `public/host.html` — màn hình Host: tạo phòng, hiện mã PIN 6 số, theo dõi người chơi
-  vào phòng, bắt đầu/chuyển câu, xem thống kê từng câu, bảng xếp hạng, podium cuối trận.
-- `public/player.html` — màn hình Người chơi: nhập PIN + tên, chờ trong lobby, trả lời
-  câu hỏi bằng nút màu lớn dễ bấm trên điện thoại, xem kết quả & điểm nhận được.
-- Trong Game Hub (`js.html`) có thêm thẻ **"Chơi Nhóm (Multiplayer)"** với 2 nút:
-  Làm Host / Tham gia bằng PIN.
-
 ## Cách chạy
 
 ```bash
