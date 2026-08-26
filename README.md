@@ -1,8 +1,5 @@
 # Quiz Siêu Nhân — Chơi Nhóm (Multiplayer + Mã PIN)
 
-Bản nâng cấp thêm chế độ **chơi nhóm real-time** cho game Quiz Siêu Nhân của bạn,
-dùng **Node.js + Socket.IO** làm server thật (không còn chỉ chạy 1 file HTML).
-
 ## Cách chạy
 
 ```bash
