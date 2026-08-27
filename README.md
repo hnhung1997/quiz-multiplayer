@@ -83,5 +83,3 @@ prisma/   schema.prisma + seed
 Sự kiện `new_question` chỉ có nội dung câu hỏi; đề bài ở chế độ kiểm tra được lược bỏ `isCorrect`; mọi việc
 chấm điểm đều nằm ở máy chủ. Có kiểm thử tự động canh giữ nguyên tắc này ở cả hai tầng: `server/test/answer-key.test.ts` kiểm tra hàm
 tạo dữ liệu, còn `server/test/e2e/live.e2e.ts` bắt gói tin thật trên đường truyền.
-
-Chi tiết kiến trúc, quy ước và các quyết định thiết kế nằm trong [CLAUDE.md](./CLAUDE.md).
