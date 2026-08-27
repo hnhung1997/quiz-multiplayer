@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 bỏ `darkMode: 'class'` trong file config — chế độ tối theo class
+ * phải khai báo bằng custom variant như dòng dưới.
+ */
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.995 0.002 260);
+  --foreground: oklch(0.21 0.02 265);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.02 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.02 265);
+  --primary: oklch(0.55 0.21 285);
+  --primary-foreground: oklch(0.99 0.005 285);
+  --secondary: oklch(0.96 0.01 265);
+  --secondary-foreground: oklch(0.3 0.03 265);
+  --muted: oklch(0.96 0.01 265);
+  --muted-foreground: oklch(0.53 0.02 265);
+  --accent: oklch(0.95 0.03 285);
+  --accent-foreground: oklch(0.35 0.08 285);
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.99 0.005 27);
+  --success: oklch(0.62 0.17 148);
+  --success-foreground: oklch(0.99 0.005 148);
+  --warning: oklch(0.75 0.16 75);
+  --warning-foreground: oklch(0.25 0.05 75);
+  --border: oklch(0.9 0.01 265);
+  --input: oklch(0.9 0.01 265);
+  --ring: oklch(0.55 0.21 285);
+
+  /*
+   * Sáu màu đáp án. Đây KHÔNG phải trang trí — trong lối chơi kiểu Kahoot,
+   * màu chính là danh tính của đáp án, nên chúng giữ nguyên ở cả hai chế độ
+   * để người chơi nhận ra ô mình định bấm.
+   */
+  --answer-1: #e03434;
+  --answer-2: #d63a9e;
+  --answer-3: #2f7fd8;
+  --answer-4: #2f9a4e;
+  --answer-5: #d18f0b;
+  --answer-6: #7c4dd8;
+}
+
+.dark {
+  --background: oklch(0.16 0.02 265);
+  --foreground: oklch(0.94 0.01 265);
+  --card: oklch(0.21 0.025 265);
+  --card-foreground: oklch(0.94 0.01 265);
+  --popover: oklch(0.21 0.025 265);
+  --popover-foreground: oklch(0.94 0.01 265);
+  --primary: oklch(0.7 0.17 285);
+  --primary-foreground: oklch(0.17 0.03 285);
+  --secondary: oklch(0.28 0.025 265);
+  --secondary-foreground: oklch(0.92 0.01 265);
+  --muted: oklch(0.27 0.02 265);
+  --muted-foreground: oklch(0.68 0.02 265);
+  --accent: oklch(0.32 0.05 285);
+  --accent-foreground: oklch(0.92 0.02 285);
+  --destructive: oklch(0.65 0.2 27);
+  --destructive-foreground: oklch(0.16 0.02 27);
+  --success: oklch(0.7 0.16 148);
+  --success-foreground: oklch(0.16 0.02 148);
+  --warning: oklch(0.8 0.15 75);
+  --warning-foreground: oklch(0.2 0.04 75);
+  --border: oklch(0.32 0.02 265);
+  --input: oklch(0.34 0.02 265);
+  --ring: oklch(0.7 0.17 285);
+
+  /* Sáng hơn một chút để nổi trên nền tối, vẫn giữ đúng sắc màu. */
+  --answer-1: #ff5c5c;
+  --answer-2: #ff6fcf;
+  --answer-3: #4aa8ff;
+  --answer-4: #4bd06d;
+  --answer-5: #ffd24a;
+  --answer-6: #a98bff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-answer-1: var(--answer-1);
+  --color-answer-2: var(--answer-2);
+  --color-answer-3: var(--answer-3);
+  --color-answer-4: var(--answer-4);
+  --color-answer-5: var(--answer-5);
+  --color-answer-6: var(--answer-6);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fredoka", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+  }
+  /* Người dùng bật "giảm chuyển động" thì tắt hiệu ứng, kể cả pháo giấy. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@keyframes qsn-pop {
+  0%   { transform: scale(0.55); opacity: 0; }
+  45%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+
+  /*
+   * Con số đếm ngược nảy lên mỗi giây. Quy tắc prefers-reduced-motion ở trên rút
+   * thời lượng về gần 0, nên người bật "giảm chuyển động" chỉ thấy số hiện ra —
+   * còn ba giây chờ vẫn giữ nguyên vì đó là quãng nghỉ có mục đích, không phải
+   * trang trí.
+   */
+  .animate-pop { animation: qsn-pop 420ms ease-out; }
+}

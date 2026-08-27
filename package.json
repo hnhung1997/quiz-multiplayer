@@ -1,14 +1,36 @@
 {
-  "name": "power-rangers-quiz-multiplayer",
-  "version": "1.0.0",
-  "description": "Multiplayer real-time quiz server (PIN-based) for the Power Rangers quiz game",
-  "main": "server.js",
+  "name": "quiz-sieu-nhan",
+  "version": "2.0.0",
+  "description": "Quiz Siêu Nhân — multiplayer quiz + question banks + test mode",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "npm run dev --workspace=server & npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "build": "npm run build --workspace=client",
+    "start": "npm run start --workspace=server",
+    "typecheck": "tsc --noEmit -p tsconfig.json && npm run typecheck --workspace=client --if-present",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "node --env-file=.env prisma/seed.js",
+    "db:studio": "prisma studio",
+    "db:validate": "prisma validate",
+    "test": "node --test 'server/test/*.test.ts' 'client/test/*.test.ts'",
+    "test:e2e": "node --env-file=.env server/test/e2e/run.ts"
   },
-  "dependencies": {
-    "express": "^4.19.2",
-    "socket.io": "^4.7.5"
-  }
+  "prisma": {
+    "seed": "node --env-file=.env prisma/seed.js"
+  },
+  "devDependencies": {
+    "prisma": "^6.1.0",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {}
 }
