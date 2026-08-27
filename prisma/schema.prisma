@@ -1,0 +1,263 @@
+// Quiz Siêu Nhân — data model
+//
+// Connection note: DATABASE_URL is the Supabase transaction pooler (port 6543,
+// `?pgbouncer=true`) used by the running app; directUrl is the session pooler
+// (port 5432) and is the only one migrations can run over.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum SessionStatus {
+  LOBBY
+  IN_PROGRESS
+  ENDED
+  ABANDONED
+}
+
+enum AttemptMode {
+  LIVE
+  TEST
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  ABANDONED
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  displayName  String    @map("display_name")
+  role         Role      @default(STUDENT)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  refreshTokens  RefreshToken[]
+  banks          QuestionBank[]
+  quizzes        Quiz[]
+  hostedSessions GameSession[]  @relation("HostedSessions")
+  attempts       Attempt[]
+
+  @@map("users")
+}
+
+/// Opaque rotating refresh tokens. This is what makes JWT "logout" real:
+/// the access token is short-lived and unrevocable, so logout revokes this row.
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  /// sha256 of the opaque token. The token itself is never stored.
+  tokenHash String    @unique @map("token_hash")
+  /// Rotation family, so reuse of a rotated token can revoke every descendant.
+  familyId  String    @map("family_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  userAgent String?   @map("user_agent")
+  ip        String?
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model QuestionBank {
+  id          String     @id @default(uuid()) @db.Uuid
+  ownerId     String     @map("owner_id") @db.Uuid
+  title       String
+  description String?
+  visibility  Visibility @default(PRIVATE)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@index([ownerId])
+  @@map("question_banks")
+}
+
+model Question {
+  id           String   @id @default(uuid()) @db.Uuid
+  bankId       String   @map("bank_id") @db.Uuid
+  text         String
+  explanation  String?
+  imageCorrect String   @default("dung.jpg") @map("image_correct")
+  imageWrong   String   @default("sai.jpg") @map("image_wrong")
+  /// Seconds, clamped to 4..120 by the shared validator.
+  timeLimit    Int      @default(15) @map("time_limit")
+  /// Max points available in LIVE mode. TEST mode scores 1 per question.
+  points       Int      @default(1000)
+  position     Int
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  bank           QuestionBank     @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  options        QuestionOption[]
+  quizQuestions  QuizQuestion[]
+  attemptAnswers AttemptAnswer[]
+
+  @@index([bankId])
+  @@map("questions")
+}
+
+/// Correctness lives on the option rather than as an index on the question.
+/// Relationally sound, and it leaves room for multi-correct questions later
+/// without a migration.
+model QuestionOption {
+  id         String  @id @default(uuid()) @db.Uuid
+  questionId String  @map("question_id") @db.Uuid
+  position   Int
+  text       String
+  /// #rrggbb, author-chosen. Null falls back to the themed answer palette.
+  color      String?
+  isCorrect  Boolean @default(false) @map("is_correct")
+
+  question Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  AttemptAnswer[]
+
+  @@unique([questionId, position])
+  @@map("question_options")
+}
+
+model Quiz {
+  id               String     @id @default(uuid()) @db.Uuid
+  ownerId          String     @map("owner_id") @db.Uuid
+  title            String
+  description      String?
+  coverImage       String?    @map("cover_image")
+  visibility       Visibility @default(PRIVATE)
+  isPublished      Boolean    @default(false) @map("is_published")
+  allowTestMode    Boolean    @default(true) @map("allow_test_mode")
+  defaultTimeLimit Int        @default(15) @map("default_time_limit")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  publishedAt      DateTime?  @map("published_at")
+
+  owner     User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  sessions  GameSession[]
+  attempts  Attempt[]
+
+  @@index([ownerId])
+  @@index([visibility, isPublished])
+  @@map("quizzes")
+}
+
+/// Join table, so one question can be reused across many quizzes.
+model QuizQuestion {
+  quizId            String @map("quiz_id") @db.Uuid
+  questionId        String @map("question_id") @db.Uuid
+  position          Int
+  timeLimitOverride Int?   @map("time_limit_override")
+
+  quiz     Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([quizId, questionId])
+  @@unique([quizId, position])
+  @@map("quiz_questions")
+}
+
+model GameSession {
+  id     String        @id @default(uuid()) @db.Uuid
+  quizId String        @map("quiz_id") @db.Uuid
+  hostId String        @map("host_id") @db.Uuid
+  /// Deliberately NOT unique: PINs are recycled once a session ends. The
+  /// in-memory room map guarantees uniqueness among *live* sessions.
+  pin       String
+  status    SessionStatus @default(LOBBY)
+  settings  Json?
+  startedAt DateTime?     @map("started_at")
+  endedAt   DateTime?     @map("ended_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  quiz     Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  host     User      @relation("HostedSessions", fields: [hostId], references: [id], onDelete: Cascade)
+  attempts Attempt[]
+
+  @@index([hostId, createdAt])
+  @@index([pin, status])
+  @@map("game_sessions")
+}
+
+/// ONE table for both modes. A live participant is an Attempt with mode=LIVE and
+/// a sessionId; a paper test is mode=TEST with neither. History and analytics get
+/// a single query path instead of two parallel result schemas.
+model Attempt {
+  id     String  @id @default(uuid()) @db.Uuid
+  quizId String  @map("quiz_id") @db.Uuid
+  /// Null for a guest, which is only possible in LIVE mode.
+  userId String? @map("user_id") @db.Uuid
+  sessionId String?  @map("session_id") @db.Uuid
+  guestName String?  @map("guest_name")
+
+  mode           AttemptMode
+  status         AttemptStatus @default(IN_PROGRESS)
+  score          Int           @default(0)
+  maxScore       Int           @default(0) @map("max_score")
+  correctCount   Int           @default(0) @map("correct_count")
+  totalQuestions Int           @default(0) @map("total_questions")
+  /// Final placing, LIVE mode only.
+  rank           Int?
+  durationMs     Int?          @map("duration_ms")
+  startedAt      DateTime      @default(now()) @map("started_at")
+  submittedAt    DateTime?     @map("submitted_at")
+
+  quiz    Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user    User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session GameSession?    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  answers AttemptAnswer[]
+
+  @@index([userId, submittedAt])
+  @@index([quizId, mode])
+  @@index([sessionId])
+  @@map("attempts")
+}
+
+model AttemptAnswer {
+  id         String  @id @default(uuid()) @db.Uuid
+  attemptId  String  @map("attempt_id") @db.Uuid
+  questionId String  @map("question_id") @db.Uuid
+  /// Null means unanswered or timed out.
+  selectedOptionId String? @map("selected_option_id") @db.Uuid
+
+  isCorrect     Boolean  @default(false) @map("is_correct")
+  elapsedMs     Int?     @map("elapsed_ms")
+  pointsAwarded Int      @default(0) @map("points_awarded")
+  streakAfter   Int?     @map("streak_after")
+  answeredAt    DateTime @default(now()) @map("answered_at")
+
+  attempt  Attempt         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selected QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@unique([attemptId, questionId])
+  @@index([questionId])
+  @@map("attempt_answers")
+}
